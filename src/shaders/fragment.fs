@@ -6,10 +6,12 @@ in vec2 UV;
 out vec4 FragColor;
 
 uniform usampler3D model;
+uniform sampler2D prevFrame;
 uniform ivec3 modelDimms;
 uniform float aspect;
 uniform int time;
-uniform int numRays;
+uniform int frameCount;
+
 
 const float DEGREE = 3.1415926535897932384/180.0;
 const float PI = 3.1415926525897932384;
@@ -91,43 +93,30 @@ bool hitFunction(uint voxtype, int face, vec2 location, vec3 position, vec3 inci
         }
     }else if (voxtype == 1u)
     {
-        if (hits < 3)
+        if (hits < 5)
         {
             const vec3 baseColour = vec3(0.8666666666667, 0.16078431373, 0.06274509804);
             vec3 reflectedDirection = incidentAngle;
-            vec3 normal;
-            if (face == UP)
-            {
-                normal = vec3(0.0, 1.0, 0.0);
-                reflectedDirection.y *= -1;
-            }
-            else if(face == DOWN)
-            {
-                normal = vec3(0.0, -1.0, 0.0);
-                reflectedDirection.y *= -1;
-            }
-            else if (face == EAST)
-            {
-                normal = vec3(1.0, 0.0, 0.0);
-                reflectedDirection.x *= -1;
-            }
-            else if (face == WEST)
-            {
-                normal = vec3(-1.0, 0.0, 0.0);
-                reflectedDirection.x *= -1;
-            }
-            else if (face == NORTH)
-            {
-                normal = vec3(0.0, 0.0, 1.0);
-                reflectedDirection.z *= -1;
-            }
-            else if (face == SOUTH)
-            {
-                normal = vec3(0.0, 0.0, -1.0);
-                reflectedDirection.z *= -1;
-            }
+            // build masks (0.0 or 1.0)
+            float m_up    = float(int(face == UP));
+            float m_down  = float(int(face == DOWN));
+            float m_east  = float(int(face == EAST));
+            float m_west  = float(int(face == WEST));
+            float m_north = float(int(face == NORTH));
+            float m_south = float(int(face == SOUTH));
+            // normal is (+1 for positive face, -1 for negative face) per axis
+            vec3 normal = vec3(m_east - m_west, m_up - m_down, m_north - m_south);
+            // flip multiplier: 1.0 normally, -1.0 when that axis's face is selected
+            vec3 flip = vec3(
+                1.0 - 2.0 * (m_east + m_west),
+                1.0 - 2.0 * (m_up + m_down),
+                1.0 - 2.0 * (m_north + m_south)
+            );
+            // apply flip to reflectedDirection components
+            reflectedDirection *= flip;
+            
             float cosTheta = max(0.0, dot(normal, normalize(incidentAngle*(-1.0))));
-            const float R_0 = 0.2;
+            const float R_0 = 0.5;
             float reflectionCoefficient = R_0 + (1-R_0)*pow((1-cosTheta), 5.0);
             float u1 = seededRand(time);
             float u2 = seededRand(time+1);
@@ -135,13 +124,9 @@ bool hitFunction(uint voxtype, int face, vec2 location, vec3 position, vec3 inci
             float u3 = seededRand(time+2);
             vec3 perpNormal = normalize(cross(normal, incidentAngle));
             vec3 direction;
-            if (u3 > reflectionCoefficient)
-            {
-                direction = normal*valueInLobe.z + perpNormal*valueInLobe.x + normalize(cross(normal, perpNormal))*valueInLobe.z;
-            }else
-            {
-                direction = reflectedDirection*valueInLobe.z + perpNormal*valueInLobe.x + normalize(cross(perpNormal, reflectedDirection))*valueInLobe.y;
-            }
+            
+            direction = (int(u3 > reflectionCoefficient))*(normal*valueInLobe.z + perpNormal*valueInLobe.x + normalize(cross(normal, perpNormal))*valueInLobe.z) + (1-int(u3 > reflectionCoefficient))*(reflectedDirection*valueInLobe.z + perpNormal*valueInLobe.x + normalize(cross(perpNormal, reflectedDirection))*valueInLobe.y);
+            
             traceRayResult *= baseColour;
 
             traceRayPosition = position;
@@ -326,6 +311,7 @@ bool traceRayInWorld()
 
 bool traceRay()
 {
+
     vec3 normDir = normalize(traceRayDirection);
 
     if ((abs(traceRayPosition.x) > modelDimms.x/2) || (abs(traceRayPosition.y) > modelDimms.y/2) || (abs(traceRayPosition.z) > modelDimms.z/2))
@@ -419,27 +405,10 @@ bool traceRay()
         }
         vec3 perBlockDistances = vec3(length(xDir), length(yDir), length(zDir));
         vec3 initialDistances;
-        if (directions.x)
-        {
-            initialDistances.x = perBlockDistances.x * (ceil(worldPosition.x) - worldPosition.x);
-        }else
-        {
-            initialDistances.x = perBlockDistances.x * (worldPosition.x - floor(worldPosition.x));
-        }
-        if (directions.y)
-        {
-            initialDistances.y = perBlockDistances.y * (ceil(worldPosition.y) - worldPosition.y);
-        }else
-        {
-            initialDistances.y = perBlockDistances.y * (worldPosition.y - floor(worldPosition.y));
-        }
-        if (directions.z)
-        {
-            initialDistances.z = perBlockDistances.z * (ceil(worldPosition.z) - worldPosition.z);
-        }else
-        {
-            initialDistances.z = perBlockDistances.z * (worldPosition.z - floor(worldPosition.z));
-        }
+        initialDistances.x = int(directions.x)*(perBlockDistances.x * (ceil(worldPosition.x) - worldPosition.x))+(1-int(directions.x))*(perBlockDistances.x * (worldPosition.x - floor(worldPosition.x)));
+        initialDistances.y = int(directions.y)*(perBlockDistances.y * (ceil(worldPosition.y) - worldPosition.y))+(1-int(directions.y))*(perBlockDistances.y * (worldPosition.y - floor(worldPosition.y)));
+        initialDistances.z = int(directions.z)*(perBlockDistances.z * (ceil(worldPosition.z) - worldPosition.z))+(1-int(directions.z))*(perBlockDistances.z * (worldPosition.z - floor(worldPosition.z)));
+        
         traceRayInWorldPosition = traceRayPosition;
         traceRayInWorldNormDir = normDir;
         traceRayInWorldHits = traceRayHits;
@@ -450,7 +419,7 @@ bool traceRay()
         traceRayInWorldTime = time;
         while (!traceRayInWorld())
         {
-            int placeholder = 0;
+            continue;
         }
         return traceRayInWorldResult;
     }
@@ -468,23 +437,28 @@ void main()
     vec3 direction = normalize(vec3(uv.x*0.5, uv.y*0.5, 1.0));
     mat3 rotationMatrix = mat3(
         1.0, 0.0              ,  0.0,   // first column
-        0.0, cos(-10.0*DEGREE), -sin(-10.0*DEGREE),   // second column
-        0.0, sin(-10.0*DEGREE),  cos(-10.0*DEGREE)    // third column
+        0.0, cos(-22.0*DEGREE), -sin(-22.0*DEGREE),   // second column
+        0.0, sin(-22.0*DEGREE),  cos(-22.0*DEGREE)    // third column
     );
-    vec3 rayColour = vec3(0.0, 0.0, 0.0);
-    for (int i = 0; i < numRays; i++)
+
+    traceRayPosition = vec3(0.0, 300.0, -850.0);
+    traceRayDirection = rotationMatrix*direction;
+    traceRayHits = 0;
+    traceRayTime = time*int(floor(uv.x*10000))*int(floor(uv.y*10000));
+    traceRayResult = vec3(1.0, 1.0, 1.0);
+    while (!traceRay())
     {
-        traceRayPosition = vec3(0.0, 150.0, -800.0);
-        traceRayDirection = rotationMatrix*direction;
-        traceRayHits = 0;
-        traceRayTime = time*int(floor(uv.x*10000))*int(floor(uv.y*10000))*i;
-        traceRayResult = vec3(1.0, 1.0, 1.0);
-        while (!traceRay())
-        {
-            int placeholder = 0;
-        }
-        rayColour += traceRayResult;
+        continue;
     }
-    FragColor = vec4(rayColour/float(numRays), 1.0);
+
+
+
+    vec2 UV2 = UV*0.5+vec2(0.5, 0.5);
+    vec3 prev = texture(prevFrame, UV2).rgb;
+    vec3 current = traceRayResult; // your new raytraced color
+    float alpha = 1.0 / float(frameCount + 1);
+    vec3 accum = mix(prev, current, alpha);
+    FragColor = vec4(accum, 1.0);
+
 }
 
