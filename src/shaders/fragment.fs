@@ -11,6 +11,8 @@ uniform ivec3 modelDimms;
 uniform float aspect;
 uniform int time;
 uniform int frameCount;
+uniform vec3 position;
+uniform mat3 directionMat;
 
 
 const float DEGREE = 3.1415926535897932384/180.0;
@@ -91,7 +93,8 @@ bool hitFunction(uint voxtype, int face, vec2 location, vec3 position, vec3 inci
             traceRayResult *= skyBlue;
             return true;
         }
-    }else if (voxtype == 1u)
+    }
+    else if (voxtype == 1u)
     {
         if (hits < 5)
         {
@@ -235,7 +238,7 @@ bool traceRayInWorld()
         }
         else
         {
-            ivec3 newGridPosition = ivec3(traceRayInWorldGridPosition.x, traceRayInWorldGridPosition.y-1, traceRayInWorldPosition.z);
+            ivec3 newGridPosition = ivec3(traceRayInWorldGridPosition.x, traceRayInWorldGridPosition.y-1, traceRayInWorldGridPosition.z);
             vec3 newDistances = vec3(traceRayInWorldDistances.x-traceRayInWorldDistances.y, traceRayInWorldPerBlockDistances.y, traceRayInWorldDistances.z-traceRayInWorldDistances.y);
             vec3 newPosition = traceRayInWorldPosition+traceRayInWorldNormDir*traceRayInWorldDistances.y;
             if (newGridPosition.y < 0)
@@ -284,7 +287,7 @@ bool traceRayInWorld()
         }
         else
         {
-            ivec3 newGridPosition = ivec3(traceRayInWorldGridPosition.x, traceRayInWorldGridPosition.y, traceRayInWorldPosition.z-1);
+            ivec3 newGridPosition = ivec3(traceRayInWorldGridPosition.x, traceRayInWorldGridPosition.y, traceRayInWorldGridPosition.z-1);
             vec3 newDistances = vec3(traceRayInWorldDistances.x-traceRayInWorldDistances.z, traceRayInWorldDistances.y-traceRayInWorldDistances.z, traceRayInWorldPerBlockDistances.z);
             vec3 newPosition = traceRayInWorldPosition+traceRayInWorldNormDir*traceRayInWorldDistances.z;
             if (newGridPosition.z < 0)
@@ -326,18 +329,18 @@ bool traceRay()
 
         if (normDir.x != 0.0)
         {
-            distXP = ((-modelDimms.x/2)-traceRayPosition.x) / normDir.x;
-            distXN = (( modelDimms.x/2)-traceRayPosition.x) / normDir.x;
+            distXN = ((-modelDimms.x/2)-traceRayPosition.x) / normDir.x;
+            distXP = (( modelDimms.x/2)-traceRayPosition.x) / normDir.x;
         }
         if (normDir.y != 0.0)
         {
-            distYP = ((-modelDimms.y/2)-traceRayPosition.y) / normDir.y;
-            distYN = (( modelDimms.y/2)-traceRayPosition.y) / normDir.y;
+            distYN = ((-modelDimms.y/2)-traceRayPosition.y) / normDir.y;
+            distYP = (( modelDimms.y/2)-traceRayPosition.y) / normDir.y;
         }
         if (normDir.z != 0.0)
         {
-            distZP = ((-modelDimms.z/2)-traceRayPosition.z) / normDir.z;
-            distZN = (( modelDimms.z/2)-traceRayPosition.z) / normDir.z;
+            distZN = ((-modelDimms.z/2)-traceRayPosition.z) / normDir.z;
+            distZP = (( modelDimms.z/2)-traceRayPosition.z) / normDir.z;
         }
         if (distXP < minDist && distXP > 0)
         {
@@ -435,13 +438,9 @@ void main()
 {
     vec2 uv = vec2(UV.x, UV.y/aspect);
     vec3 direction = normalize(vec3(uv.x*0.5, uv.y*0.5, 1.0));
-    mat3 rotationMatrix = mat3(
-        1.0, 0.0              ,  0.0,   // first column
-        0.0, cos(-22.0*DEGREE), -sin(-22.0*DEGREE),   // second column
-        0.0, sin(-22.0*DEGREE),  cos(-22.0*DEGREE)    // third column
-    );
+    mat3 rotationMatrix = directionMat;
 
-    traceRayPosition = vec3(0.0, 300.0, -850.0);
+    traceRayPosition = position;
     traceRayDirection = rotationMatrix*direction;
     traceRayHits = 0;
     traceRayTime = time*int(floor(uv.x*10000))*int(floor(uv.y*10000));

@@ -2,6 +2,7 @@
 #define SHADER_H
 
 #include "glad.h"
+#include "helper.h"
 
 #include <string>
 #include <fstream>
@@ -99,6 +100,12 @@ public:
     void setFloat3(const std::string &name, float value1, float value2, float value3) const
     { 
         glUniform3f(glGetUniformLocation(ID, name.c_str()), value1, value2, value3);
+    }
+    // ------------------------------------------------------------------------
+    void setMat3(const std::string &name, mat3 v) const
+    { 
+        float value[9] = {v.a1, v.a2, v.a3, v.b1, v.b2, v.b3, v.c1, v.c2, v.c3};
+        glUniformMatrix3fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, value);
     }
 
 

@@ -5,6 +5,8 @@
 #include <GLFW/glfw3.h>
 #include "shaders.h"
 #include "loadModel.h"
+#include "helper.h"
+#include <cmath>
 
 #include <ctime>
 bool Wait(const unsigned long &Time)
@@ -27,6 +29,8 @@ bool Wait(const unsigned long &Time)
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
+const float PI = 3.1415926535897932384;
+const float DEGREE = PI/180;
 
 int winWidth = WIDTH;
 int winHeight = HEIGHT;
@@ -36,6 +40,17 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 GLuint accumTex[2];
 int frame = 0;
 
+Vector3 position = {x: 0.0, y: 300.0, z: -850.0};
+float pitch = -22.0*DEGREE;
+float yaw = 0;
+mat3 yawMat = mat3{cos(yaw) , 0.0, sin(yaw),
+                          0.0      , 1.0, 0.0,
+                          -sin(yaw), 0.0, cos(yaw)};
+mat3 pitchMat = mat3{1.0, 0.0        , 0.0,
+                          0.0, cos(pitch) , sin(pitch),
+                          0.0, -sin(pitch), cos(pitch)};
+mat3 direction = mul(yawMat, pitchMat);
+
 
 
 
@@ -43,6 +58,125 @@ void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    {
+        position += mul(yawMat, Vector3{x: 0.0, y: 0.0, z: 40.0});
+
+        frame = 0;
+        for (int i = 0; i < 2; ++i) {
+            glBindTexture(GL_TEXTURE_2D, accumTex[i]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+        }
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    {
+        position += mul(yawMat, Vector3{x: 0.0, y: 0.0, z: -40.0});
+
+        frame = 0;
+        for (int i = 0; i < 2; ++i) {
+            glBindTexture(GL_TEXTURE_2D, accumTex[i]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+        }
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        position += mul(yawMat, Vector3{x: 40.0, y: 0.0, z: 0});
+
+        frame = 0;
+        for (int i = 0; i < 2; ++i) {
+            glBindTexture(GL_TEXTURE_2D, accumTex[i]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+        }
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+        position += mul(yawMat, Vector3{x: -40.0, y: 0.0, z: 0.0});
+
+        frame = 0;
+        for (int i = 0; i < 2; ++i) {
+            glBindTexture(GL_TEXTURE_2D, accumTex[i]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+        }
+    }
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+    {
+        position.y += 40.0;
+
+        frame = 0;
+        for (int i = 0; i < 2; ++i) {
+            glBindTexture(GL_TEXTURE_2D, accumTex[i]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+        }
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+    {
+        position.y -= 40.0;
+
+        frame = 0;
+        for (int i = 0; i < 2; ++i) {
+            glBindTexture(GL_TEXTURE_2D, accumTex[i]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+        }
+    }
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+    {
+        yaw += 5*DEGREE;
+        yawMat = mat3{cos(yaw) , 0.0, sin(yaw),
+                      0.0      , 1.0, 0.0,
+                      -sin(yaw), 0.0, cos(yaw)};
+        direction = mul(yawMat, pitchMat);
+
+        frame = 0;
+        for (int i = 0; i < 2; ++i) {
+            glBindTexture(GL_TEXTURE_2D, accumTex[i]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+        }
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+    {
+        yaw -= 5*DEGREE;
+        yawMat = mat3{cos(yaw) , 0.0, sin(yaw),
+                      0.0      , 1.0, 0.0,
+                      -sin(yaw), 0.0, cos(yaw)};
+        direction = mul(yawMat, pitchMat);
+
+        frame = 0;
+        for (int i = 0; i < 2; ++i) {
+            glBindTexture(GL_TEXTURE_2D, accumTex[i]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+        }
+    }
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+    {
+        pitch += 5*DEGREE;
+        if (pitch > 75*DEGREE) pitch = 75*DEGREE;
+        pitchMat = mat3{1.0, 0.0        , 0.0,
+                        0.0, cos(pitch) , sin(pitch),
+                        0.0, -sin(pitch), cos(pitch)};
+        direction = mul(yawMat, pitchMat);
+
+        frame = 0;
+        for (int i = 0; i < 2; ++i) {
+            glBindTexture(GL_TEXTURE_2D, accumTex[i]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+        }
+    }
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+    {
+        pitch -= 5*DEGREE;
+        if (pitch < -75*DEGREE) pitch = -75*DEGREE;
+        pitchMat = mat3{1.0, 0.0        , 0.0,
+                        0.0, cos(pitch) , sin(pitch),
+                        0.0, -sin(pitch), cos(pitch)};
+        direction = mul(yawMat, pitchMat);
+
+        frame = 0;
+        for (int i = 0; i < 2; ++i) {
+            glBindTexture(GL_TEXTURE_2D, accumTex[i]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+        }
+    }
 }
 
 int main()
@@ -120,9 +254,9 @@ int main()
     // Nearest filtering (no interpolation)
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
     
     std::vector<unsigned char> flat = flatData(myModel);
     glTexImage3D(GL_TEXTURE_3D,
@@ -187,6 +321,8 @@ int main()
         myShader.setFloat("aspect", static_cast<float>(winWidth)/static_cast<float>(winHeight));
         myShader.setInt("time", frame);
         myShader.setInt("frameCount", frame);
+        myShader.setMat3("directionMat", direction);
+        myShader.setFloat3("position", position.x, position.y, position.z);
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
@@ -206,7 +342,7 @@ int main()
 
 
         glfwSwapBuffers(window);
-        Wait(2*frame);
+        //Wait(2*frame);
     }
 
 
@@ -219,8 +355,9 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, width, height);
     winWidth = width;
     winHeight = height;
-    frame = 0;
+    
 
+    frame = 0;
     for (int i = 0; i < 2; ++i) {
         glBindTexture(GL_TEXTURE_2D, accumTex[i]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width*2, height*2, 0, GL_RGBA, GL_FLOAT, nullptr);

@@ -7,7 +7,8 @@ project(openGLvoxelTracer VERSION 0.0.1)
 add_executable(openGLvoxelTracer
     src/main.cpp
     src/glad.c
-    src/loadModel.cpp)
+    src/loadModel.cpp
+    src/helper.cpp)
 
 target_link_directories(openGLvoxelTracer
     PRIVATE
