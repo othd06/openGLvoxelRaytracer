@@ -6,6 +6,24 @@
 #include "shaders.h"
 #include "loadModel.h"
 
+#include <ctime>
+bool Wait(const unsigned long &Time)
+{
+    clock_t Tick = clock_t(float(clock()) / float(CLOCKS_PER_SEC) * 1000.f);
+    if(Tick < 0) // if clock() fails, it returns -1
+        return 0;
+    clock_t Now = clock_t(float(clock()) / float(CLOCKS_PER_SEC) * 1000.f);
+    if(Now < 0)
+        return 0;
+    while( (Now - Tick) < Time )
+    {
+        Now = clock_t(float(clock()) / float(CLOCKS_PER_SEC) * 1000.f);
+        if(Now < 0)
+            return 0;
+    }
+    return 1;
+}
+
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -15,36 +33,16 @@ int winHeight = HEIGHT;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
-Shader* myShaderPtr = nullptr;
-unsigned int VAO;
-GLuint texID;
-GLFWwindow* window;
-Model myModel = loadModel("dragon.binvox");
+GLuint accumTex[2];
 int frame = 0;
+
+
+
 
 void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-    {
-
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        myShaderPtr->use();
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_3D, texID);
-        myShaderPtr->setInt("model", 0);
-        myShaderPtr->setInt3("modelDimms", myModel.xDim, myModel.yDim, myModel.zDim);
-        myShaderPtr->setFloat("aspect", static_cast<float>(winWidth)/static_cast<float>(winHeight));
-        myShaderPtr->setInt("time", frame);
-        myShaderPtr->setInt("numRays", 100);
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-        glfwSwapBuffers(window);
-    }
 }
 
 int main()
@@ -57,7 +55,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     #endif
 
-    window = glfwCreateWindow(WIDTH, HEIGHT, "Voxel Tracer", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Voxel Tracer", NULL, NULL);
     if (!window)
     {
         std::cout << "failed to create window" << std::endl;
@@ -91,6 +89,7 @@ int main()
         1, 2, 3    // second triangle
     };   
 
+    unsigned int VAO;
     glGenVertexArrays(1, &VAO); 
 
     glBindVertexArray(VAO);
@@ -111,6 +110,10 @@ int main()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
+
+    Model myModel = loadModel("dragon.binvox");
+
+    GLuint texID;
     glGenTextures(1, &texID);
 
     glBindTexture(GL_TEXTURE_3D, texID);
@@ -137,17 +140,73 @@ int main()
     
 
     Shader myShader("shaders/vertex.vs", "shaders/fragment.fs");
-    myShaderPtr = &myShader;
+    Shader showTexture("shaders/vertex.vs", "shaders/fragTexture.fs");
 
+    GLuint FBO;
+    int pingpong = 0;
+    glGenTextures(2, accumTex);
+    for (int i = 0; i < 2; i++)
+    {
+        glBindTexture(GL_TEXTURE_2D, accumTex[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, WIDTH*2 , HEIGHT*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
+    glGenFramebuffers(1, &FBO);
 
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glfwSwapBuffers(window);
+    glDisable(GL_DEPTH_TEST);
+
+    
     while(!glfwWindowShouldClose(window))
     {
-        frame += 1;
         glfwPollEvents();
         processInput(window);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, accumTex[pingpong], 0);
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            std::cout << "Framebuffer not complete!" << std::endl;
+        }
+        glViewport(0, 0, winWidth*2, winHeight*2);
+        
+        
+
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        myShader.use();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_3D, texID);
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, accumTex[1 - pingpong]);
+        myShader.setInt("prevFrame", 1);
+
+        myShader.setInt("model", 0);
+        myShader.setInt3("modelDimms", myModel.xDim, myModel.yDim, myModel.zDim);
+        myShader.setFloat("aspect", static_cast<float>(winWidth)/static_cast<float>(winHeight));
+        myShader.setInt("time", frame);
+        myShader.setInt("frameCount", frame);
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, winWidth, winHeight);
+
+        showTexture.use();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, accumTex[pingpong]);
+        showTexture.setInt("screenTex", 0);
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+
+        pingpong = 1 - pingpong;
+        frame += 1;
+
+
+        glfwSwapBuffers(window);
+        Wait(2*frame);
     }
 
 
@@ -160,9 +219,12 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, width, height);
     winWidth = width;
     winHeight = height;
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glfwSwapBuffers(window);
+    frame = 0;
+
+    for (int i = 0; i < 2; ++i) {
+        glBindTexture(GL_TEXTURE_2D, accumTex[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width*2, height*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+    }
 }  
 
 
