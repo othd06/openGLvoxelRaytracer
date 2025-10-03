@@ -21,8 +21,12 @@ int winWidth = WIDTH;
 int winHeight = HEIGHT;
 double resolutionScale = 1.0;
 
+int FOV = 90;
+float widthScale = tan(float(FOV)*DEGREE/2.0);
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 
 GLuint accumTex[2];
 int frame = 0;
@@ -186,8 +190,15 @@ void processInput(GLFWwindow *window)
     }
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+    if (argc != 2)
+    {
+        std::cout << "Usage: VoxelRaytracer <path to .binvox file>" << std::endl;
+        return -1;
+    }
+
+
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -196,7 +207,9 @@ int main()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     #endif
 
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Voxel Tracer", NULL, NULL);
+    char title[64];
+    snprintf(title, sizeof(title), "Voxel Tracer (Resolution Scale: %.1f)", resolutionScale);
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, title, NULL, NULL);
     if (!window)
     {
         std::cout << "failed to create window" << std::endl;
@@ -216,6 +229,7 @@ int main()
     glViewport(0, 0, WIDTH, HEIGHT);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
 
 
     float vertices[] =
@@ -253,7 +267,7 @@ int main()
     glEnableVertexAttribArray(0);
 
 
-    Model myModel = loadModel("dragon.binvox");
+    Model myModel = loadModel(argv[1]);
 
     GLuint texID;
     glGenTextures(1, &texID);
@@ -336,6 +350,7 @@ int main()
         myShader.setInt("frameCount", frame);
         myShader.setMat3("directionMat", direction);
         myShader.setFloat3("position", position.x, position.y, position.z);
+        myShader.setFloat("widthScale", widthScale);
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
@@ -422,5 +437,36 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     if (pitch < -75.0*DEGREE) pitch = -75.0*DEGREE;
 }
 
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+    // store the offset somewhere accessible
+    int scroll = int(yoffset);
+    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
+    {
+        FOV += scroll;
+        if (FOV > 160) FOV = 160;
+        if (FOV < 30) FOV = 30;
+        widthScale = tan(float(FOV)*DEGREE/2.0);
+        frame = 0;
+        for (int i = 0; i < 2; ++i) {
+            glBindTexture(GL_TEXTURE_2D, accumTex[i]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, int(float(winWidth)*resolutionScale), int(float(winHeight)*resolutionScale), 0, GL_RGBA, GL_FLOAT, nullptr);
+        }
+    }
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
+    {
+        resolutionScale += float(scroll)*0.1;
+        if (resolutionScale < 0.1) resolutionScale = 0.1;
+        if (resolutionScale > 4.0) resolutionScale = 4.0;
 
+        char title[64];
+        snprintf(title, sizeof(title), "Voxel Tracer (Resolution Scale: %.1f)", resolutionScale);
+        glfwSetWindowTitle(window, title);
+
+        frame = 0;
+        for (int i = 0; i < 2; ++i) {
+            glBindTexture(GL_TEXTURE_2D, accumTex[i]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, int(float(winWidth)*resolutionScale), int(float(winHeight)*resolutionScale), 0, GL_RGBA, GL_FLOAT, nullptr);
+        }
+    }
+}
 

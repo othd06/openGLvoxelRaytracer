@@ -104,7 +104,7 @@ public:
     // ------------------------------------------------------------------------
     void setMat3(const std::string &name, mat3 v) const
     { 
-        float value[9] = {v.a1, v.a2, v.a3, v.b1, v.b2, v.b3, v.c1, v.c2, v.c3};
+        float value[9] = {float(v.a1), float(v.a2), float(v.a3), float(v.b1), float(v.b2), float(v.b3), float(v.c1), float(v.c2), float(v.c3)};
         glUniformMatrix3fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, value);
     }
 

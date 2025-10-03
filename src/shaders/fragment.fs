@@ -13,6 +13,7 @@ uniform int time;
 uniform int frameCount;
 uniform vec3 position;
 uniform mat3 directionMat;
+uniform float widthScale;
 
 
 const float DEGREE = 3.1415926535897932384/180.0;
@@ -474,7 +475,7 @@ bool traceRay()
 void main()
 {
     vec2 uv = vec2(UV.x, UV.y/aspect);
-    vec3 direction = normalize(vec3(uv.x*0.5, uv.y*0.5, 1.0));
+    vec3 direction = normalize(vec3(vec2(uv.x*0.5, uv.y*0.5)*widthScale, 1.0));
     mat3 rotationMatrix = directionMat;
 
     traceRayPosition = position;
