@@ -96,52 +96,89 @@ bool hitFunction(uint voxtype, int face, vec2 location, vec3 position, vec3 inci
     }
     else if (voxtype == 1u)
     {
-        if (hits < 5)
+        const vec3 baseColour = vec3(0.8666666666667, 0.16078431373, 0.06274509804);
+        if (frameCount == 0)
         {
-            const vec3 baseColour = vec3(0.8666666666667, 0.16078431373, 0.06274509804);
-            vec3 reflectedDirection = incidentAngle;
-            // build masks (0.0 or 1.0)
-            float m_up    = float(int(face == UP));
-            float m_down  = float(int(face == DOWN));
-            float m_east  = float(int(face == EAST));
-            float m_west  = float(int(face == WEST));
-            float m_north = float(int(face == NORTH));
-            float m_south = float(int(face == SOUTH));
-            // normal is (+1 for positive face, -1 for negative face) per axis
-            vec3 normal = vec3(m_east - m_west, m_up - m_down, m_north - m_south);
-            // flip multiplier: 1.0 normally, -1.0 when that axis's face is selected
-            vec3 flip = vec3(
-                1.0 - 2.0 * (m_east + m_west),
-                1.0 - 2.0 * (m_up + m_down),
-                1.0 - 2.0 * (m_north + m_south)
-            );
-            // apply flip to reflectedDirection components
-            reflectedDirection *= flip;
-            
-            float cosTheta = max(0.0, dot(normal, normalize(incidentAngle*(-1.0))));
-            const float R_0 = 0.5;
-            float reflectionCoefficient = R_0 + (1-R_0)*pow((1-cosTheta), 5.0);
-            float u1 = seededRand(time);
-            float u2 = seededRand(time+1);
-            vec3 valueInLobe = sampleCosineHemisphere(u1, u2);
-            float u3 = seededRand(time+2);
-            vec3 perpNormal = normalize(cross(normal, incidentAngle));
-            vec3 direction;
-            
-            direction = (int(u3 > reflectionCoefficient))*(normal*valueInLobe.z + perpNormal*valueInLobe.x + normalize(cross(normal, perpNormal))*valueInLobe.z) + (1-int(u3 > reflectionCoefficient))*(reflectedDirection*valueInLobe.z + perpNormal*valueInLobe.x + normalize(cross(perpNormal, reflectedDirection))*valueInLobe.y);
-            
-            traceRayResult *= baseColour;
-
-            traceRayPosition = position;
-            traceRayDirection = direction;
-            traceRayHits = hits+1;
-            traceRayTime = time+3;
-            return false;
+            traceRayResult *= 0.7;
+            if (face == UP)
+            {
+                traceRayResult *= baseColour*1.0;
+                return true;
+            }
+            else if (face == DOWN)
+            {
+                traceRayResult *= baseColour*0.15;
+                return true;
+            }
+            else if (face == NORTH)
+            {
+                traceRayResult *= baseColour*0.7;
+                return true;
+            }
+            else if (face == SOUTH)
+            {
+                traceRayResult *= baseColour*0.4;
+                return true;
+            }
+            else if (face == WEST)
+            {
+                traceRayResult *= baseColour*0.85;
+                return true;
+            }
+            else if (face == EAST)
+            {
+                traceRayResult *= baseColour*0.25;
+                return true;
+            }
         }
         else
         {
-            traceRayResult *= vec3(0.0, 0.0, 0.0);
-            return true;
+            if (hits < 5)
+            {
+                vec3 reflectedDirection = incidentAngle;
+                // build masks (0.0 or 1.0)
+                float m_up    = float(int(face == UP));
+                float m_down  = float(int(face == DOWN));
+                float m_east  = float(int(face == EAST));
+                float m_west  = float(int(face == WEST));
+                float m_north = float(int(face == NORTH));
+                float m_south = float(int(face == SOUTH));
+                // normal is (+1 for positive face, -1 for negative face) per axis
+                vec3 normal = vec3(m_east - m_west, m_up - m_down, m_north - m_south);
+                // flip multiplier: 1.0 normally, -1.0 when that axis's face is selected
+                vec3 flip = vec3(
+                    1.0 - 2.0 * (m_east + m_west),
+                    1.0 - 2.0 * (m_up + m_down),
+                    1.0 - 2.0 * (m_north + m_south)
+                );
+                // apply flip to reflectedDirection components
+                reflectedDirection *= flip;
+                
+                float cosTheta = max(0.0, dot(normal, normalize(incidentAngle*(-1.0))));
+                const float R_0 = 0.5;
+                float reflectionCoefficient = R_0 + (1-R_0)*pow((1-cosTheta), 5.0);
+                float u1 = seededRand(time);
+                float u2 = seededRand(time+1);
+                vec3 valueInLobe = sampleCosineHemisphere(u1, u2);
+                float u3 = seededRand(time+2);
+                vec3 perpNormal = normalize(cross(normal, incidentAngle));
+                vec3 direction;
+                
+                direction = (int(u3 > reflectionCoefficient))*(normal*valueInLobe.z + perpNormal*valueInLobe.x + normalize(cross(normal, perpNormal))*valueInLobe.z) + (1-int(u3 > reflectionCoefficient))*(reflectedDirection*valueInLobe.z + perpNormal*valueInLobe.x + normalize(cross(perpNormal, reflectedDirection))*valueInLobe.y);
+                
+                traceRayResult *= baseColour;
+
+                traceRayPosition = position;
+                traceRayDirection = direction;
+                traceRayHits = hits+1;
+                traceRayTime = time+3;
+                return false;
+            }
+            else
+            {
+                traceRayResult *= vec3(0.0, 0.0, 0.0);
+                return true;
+            }
         }
     }else
     {

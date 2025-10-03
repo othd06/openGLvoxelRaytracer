@@ -5,14 +5,14 @@
 
 struct Vector3
 {
-    float x, y, z;
+    double x, y, z;
 };
 
 struct mat3
 {
-    float a1, b1, c1;
-    float a2, b2, c2;
-    float a3, b3, c3;
+    double a1, b1, c1;
+    double a2, b2, c2;
+    double a3, b3, c3;
 };
 
 Vector3 mul(mat3 a, Vector3 b);

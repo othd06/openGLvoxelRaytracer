@@ -17,6 +17,8 @@ struct Model
 
 Model loadModel(std::string path);
 
+void free(Model& m);
+
 std::vector<unsigned char> flatData(Model m);
 
 

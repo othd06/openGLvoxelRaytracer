@@ -93,3 +93,17 @@ std::vector<unsigned char> flatData(Model m)
     return output;
 }
 
+
+void free(Model& m)
+{
+    for (int x = 0; x < size(m.data); x++)
+    {
+        for (int y = 0; y < size(m.data[x]); y++)
+        {
+            m.data[x][y].clear();
+        }
+        m.data[x].clear();
+    }
+    m.data.clear();
+}
+

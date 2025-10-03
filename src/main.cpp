@@ -8,23 +8,8 @@
 #include "helper.h"
 #include <cmath>
 
-#include <ctime>
-bool Wait(const unsigned long &Time)
-{
-    clock_t Tick = clock_t(float(clock()) / float(CLOCKS_PER_SEC) * 1000.f);
-    if(Tick < 0) // if clock() fails, it returns -1
-        return 0;
-    clock_t Now = clock_t(float(clock()) / float(CLOCKS_PER_SEC) * 1000.f);
-    if(Now < 0)
-        return 0;
-    while( (Now - Tick) < Time )
-    {
-        Now = clock_t(float(clock()) / float(CLOCKS_PER_SEC) * 1000.f);
-        if(Now < 0)
-            return 0;
-    }
-    return 1;
-}
+
+
 
 
 const int WIDTH = 800;
@@ -34,8 +19,10 @@ const float DEGREE = PI/180;
 
 int winWidth = WIDTH;
 int winHeight = HEIGHT;
+double resolutionScale = 1.0;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
 GLuint accumTex[2];
 int frame = 0;
@@ -52,76 +39,96 @@ mat3 pitchMat = mat3{1.0, 0.0        , 0.0,
 mat3 direction = mul(yawMat, pitchMat);
 
 
+double currentTime;
+double lastTime;
+double deltaTime;
+
+bool mouseDisabled = false;
+bool escapePressed = false;
 
 
 void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
+    {
+        if (escapePressed) return;
+        escapePressed = true;
+        if (!mouseDisabled)
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            mouseDisabled = true;
+        }
+        else
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            mouseDisabled = false;
+        }
+    }
+    else escapePressed = false;
     
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-        position += mul(yawMat, Vector3{x: 0.0, y: 0.0, z: 40.0});
+        position += mul(yawMat, Vector3{x: 0.0, y: 0.0, z: 140.0*deltaTime});
 
         frame = 0;
         for (int i = 0; i < 2; ++i) {
             glBindTexture(GL_TEXTURE_2D, accumTex[i]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, int(float(winWidth)*resolutionScale), int(float(winHeight)*resolutionScale), 0, GL_RGBA, GL_FLOAT, nullptr);
         }
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-        position += mul(yawMat, Vector3{x: 0.0, y: 0.0, z: -40.0});
+        position += mul(yawMat, Vector3{x: 0.0, y: 0.0, z: -140.0*deltaTime});
 
         frame = 0;
         for (int i = 0; i < 2; ++i) {
             glBindTexture(GL_TEXTURE_2D, accumTex[i]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, int(float(winWidth)*resolutionScale), int(float(winHeight)*resolutionScale), 0, GL_RGBA, GL_FLOAT, nullptr);
         }
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     {
-        position += mul(yawMat, Vector3{x: 40.0, y: 0.0, z: 0});
+        position += mul(yawMat, Vector3{x: 140.0*deltaTime, y: 0.0, z: 0});
 
         frame = 0;
         for (int i = 0; i < 2; ++i) {
             glBindTexture(GL_TEXTURE_2D, accumTex[i]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, int(float(winWidth)*resolutionScale), int(float(winHeight)*resolutionScale), 0, GL_RGBA, GL_FLOAT, nullptr);
         }
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
     {
-        position += mul(yawMat, Vector3{x: -40.0, y: 0.0, z: 0.0});
+        position += mul(yawMat, Vector3{x: -140.0*deltaTime, y: 0.0, z: 0.0});
 
         frame = 0;
         for (int i = 0; i < 2; ++i) {
             glBindTexture(GL_TEXTURE_2D, accumTex[i]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, int(float(winWidth)*resolutionScale), int(float(winHeight)*resolutionScale), 0, GL_RGBA, GL_FLOAT, nullptr);
         }
     }
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
     {
-        position.y += 40.0;
+        position.y += 140.0*deltaTime;
 
         frame = 0;
         for (int i = 0; i < 2; ++i) {
             glBindTexture(GL_TEXTURE_2D, accumTex[i]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, int(float(winWidth)*resolutionScale), int(float(winHeight)*resolutionScale), 0, GL_RGBA, GL_FLOAT, nullptr);
         }
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
     {
-        position.y -= 40.0;
+        position.y -= 140.0*deltaTime;
 
         frame = 0;
         for (int i = 0; i < 2; ++i) {
             glBindTexture(GL_TEXTURE_2D, accumTex[i]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, int(float(winWidth)*resolutionScale), int(float(winHeight)*resolutionScale), 0, GL_RGBA, GL_FLOAT, nullptr);
         }
     }
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
     {
-        yaw += 5*DEGREE;
+        yaw += 20*DEGREE*deltaTime;
         yawMat = mat3{cos(yaw) , 0.0, sin(yaw),
                       0.0      , 1.0, 0.0,
                       -sin(yaw), 0.0, cos(yaw)};
@@ -130,12 +137,12 @@ void processInput(GLFWwindow *window)
         frame = 0;
         for (int i = 0; i < 2; ++i) {
             glBindTexture(GL_TEXTURE_2D, accumTex[i]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, int(float(winWidth)*resolutionScale), int(float(winHeight)*resolutionScale), 0, GL_RGBA, GL_FLOAT, nullptr);
         }
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
     {
-        yaw -= 5*DEGREE;
+        yaw -= 20*DEGREE*deltaTime;
         yawMat = mat3{cos(yaw) , 0.0, sin(yaw),
                       0.0      , 1.0, 0.0,
                       -sin(yaw), 0.0, cos(yaw)};
@@ -144,12 +151,12 @@ void processInput(GLFWwindow *window)
         frame = 0;
         for (int i = 0; i < 2; ++i) {
             glBindTexture(GL_TEXTURE_2D, accumTex[i]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, int(float(winWidth)*resolutionScale), int(float(winHeight)*resolutionScale), 0, GL_RGBA, GL_FLOAT, nullptr);
         }
     }
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
     {
-        pitch += 5*DEGREE;
+        pitch += 15*DEGREE*deltaTime;
         if (pitch > 75*DEGREE) pitch = 75*DEGREE;
         pitchMat = mat3{1.0, 0.0        , 0.0,
                         0.0, cos(pitch) , sin(pitch),
@@ -159,12 +166,12 @@ void processInput(GLFWwindow *window)
         frame = 0;
         for (int i = 0; i < 2; ++i) {
             glBindTexture(GL_TEXTURE_2D, accumTex[i]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, int(float(winWidth)*resolutionScale), int(float(winHeight)*resolutionScale), 0, GL_RGBA, GL_FLOAT, nullptr);
         }
     }
     if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
     {
-        pitch -= 5*DEGREE;
+        pitch -= 15*DEGREE*deltaTime;
         if (pitch < -75*DEGREE) pitch = -75*DEGREE;
         pitchMat = mat3{1.0, 0.0        , 0.0,
                         0.0, cos(pitch) , sin(pitch),
@@ -174,7 +181,7 @@ void processInput(GLFWwindow *window)
         frame = 0;
         for (int i = 0; i < 2; ++i) {
             glBindTexture(GL_TEXTURE_2D, accumTex[i]);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, winWidth*2, winHeight*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, int(float(winWidth)*resolutionScale), int(float(winHeight)*resolutionScale), 0, GL_RGBA, GL_FLOAT, nullptr);
         }
     }
 }
@@ -208,6 +215,7 @@ int main()
 
     glViewport(0, 0, WIDTH, HEIGHT);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
 
 
     float vertices[] =
@@ -270,6 +278,8 @@ int main()
                  GL_UNSIGNED_BYTE, // type of input data
                  &flat[0]);        // pointer to voxel data
 
+    flat.clear();
+    free(myModel);
 
     
 
@@ -282,7 +292,7 @@ int main()
     for (int i = 0; i < 2; i++)
     {
         glBindTexture(GL_TEXTURE_2D, accumTex[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, WIDTH*2 , HEIGHT*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, int(float(WIDTH)*resolutionScale), int(float(HEIGHT)*resolutionScale), 0, GL_RGBA, GL_FLOAT, nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
@@ -295,13 +305,16 @@ int main()
     {
         glfwPollEvents();
         processInput(window);
+        currentTime = glfwGetTime();
+        deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
 
         glBindFramebuffer(GL_FRAMEBUFFER, FBO);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, accumTex[pingpong], 0);
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
             std::cout << "Framebuffer not complete!" << std::endl;
         }
-        glViewport(0, 0, winWidth*2, winHeight*2);
+        glViewport(0, 0, int(float(winWidth)*resolutionScale), int(float(winHeight)*resolutionScale));
         
         
 
@@ -319,7 +332,7 @@ int main()
         myShader.setInt("model", 0);
         myShader.setInt3("modelDimms", myModel.xDim, myModel.yDim, myModel.zDim);
         myShader.setFloat("aspect", static_cast<float>(winWidth)/static_cast<float>(winHeight));
-        myShader.setInt("time", frame);
+        myShader.setInt("time", frame + int(floor(currentTime*1000)));
         myShader.setInt("frameCount", frame);
         myShader.setMat3("directionMat", direction);
         myShader.setFloat3("position", position.x, position.y, position.z);
@@ -342,7 +355,6 @@ int main()
 
 
         glfwSwapBuffers(window);
-        //Wait(2*frame);
     }
 
 
@@ -360,10 +372,55 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     frame = 0;
     for (int i = 0; i < 2; ++i) {
         glBindTexture(GL_TEXTURE_2D, accumTex[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width*2, height*2, 0, GL_RGBA, GL_FLOAT, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, int(float(width)*resolutionScale), int(float(height)*resolutionScale), 0, GL_RGBA, GL_FLOAT, nullptr);
     }
 }  
 
+void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    
+    if (!mouseDisabled) return;
+
+    static bool firstMouse = true;
+    static double lastX, lastY;
+
+    if (firstMouse) {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    double xoffset = xpos - lastX;
+    double yoffset = lastY - ypos; // reversed: y-coordinates go top->bottom
+    lastX = xpos;
+    lastY = ypos;
+
+    // Apply sensitivity
+    float sensitivity = 0.001f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    // Update your yaw/pitch
+    yaw   += (float)xoffset;
+    pitch += (float)yoffset;
+
+    yawMat = mat3{cos(yaw) , 0.0, sin(yaw),
+                  0.0      , 1.0, 0.0,
+                  -sin(yaw), 0.0, cos(yaw)};
+    pitchMat = mat3{1.0, 0.0        , 0.0,
+                    0.0, cos(pitch) , sin(pitch),
+                    0.0, -sin(pitch), cos(pitch)};
+    direction = mul(yawMat, pitchMat);
+
+    frame = 0;
+    for (int i = 0; i < 2; ++i) {
+        glBindTexture(GL_TEXTURE_2D, accumTex[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, int(float(winWidth)*resolutionScale), int(float(winHeight)*resolutionScale), 0, GL_RGBA, GL_FLOAT, nullptr);
+    }
+
+    // Clamp pitch to avoid flipping
+    if (pitch > 75.0*DEGREE)  pitch = 75.0*DEGREE;
+    if (pitch < -75.0*DEGREE) pitch = -75.0*DEGREE;
+}
 
 
 
